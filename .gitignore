@@ -154,4 +154,7 @@ token.json
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Archive/legacy code (excluded from GitHub)
+archive/ 
