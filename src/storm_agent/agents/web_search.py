@@ -1,6 +1,6 @@
 """Web Search Agent implementation."""
 
-from typing import List, Optional, Any, Dict, Union
+from typing import List, Optional, Any, Dict, Union, AsyncGenerator
 from anthropic import Anthropic
 
 from .base import BaseAgent, ModelConfig
@@ -96,15 +96,184 @@ Remember to:
         
         return params
     
-    async def run_async(self, user_input: str, **kwargs) -> Any:
-        """Run the agent asynchronously with user input."""
+    async def run_async(self, user_input: str, stream: bool = False, **kwargs) -> Any:
+        """Run the agent asynchronously with user input.
+        
+        Args:
+            user_input: The user's input/query
+            stream: Whether to stream the response (returns AsyncGenerator if True)
+            **kwargs: Additional arguments
+            
+        Returns:
+            The agent's response (Message object if stream=False, AsyncGenerator if stream=True)
+        """
+        # Ensure MCP tools are set up before running
+        await self._ensure_mcp_setup()
+        
         # Add user message to history
         await self.message_history.add_message("user", user_input)
         
-        # Run the agent loop
-        response = await self._agent_loop(user_input)
+        # Route to streaming or non-streaming implementation
+        if stream:
+            return self._streaming_agent_loop(user_input)
+        else:
+            # Run the agent loop
+            response = await self._agent_loop(user_input)
+            return response
+    
+    async def stream_async(self, user_input: str, **kwargs) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream the agent's response asynchronously with user input.
         
-        return response
+        This method is provided for backward compatibility. For new code, 
+        prefer using run_async(user_input, stream=True).
+        
+        Args:
+            user_input: The user's input/query
+            **kwargs: Additional arguments
+            
+        Yields:
+            Dict containing streaming events with 'type' and relevant data
+        """
+        async for event in await self.run_async(user_input, stream=True, **kwargs):
+            yield event
+    
+    async def _streaming_agent_loop(self, user_input: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Main streaming agent loop for processing user input and tool calls."""
+        try:
+            # Prepare message parameters
+            params = self._prepare_message_params()
+            params["stream"] = True  # Enable streaming
+            
+            # Get streaming response from Claude
+            stream = self.client.messages.create(**params)
+            
+            # Process streaming events
+            for event in stream:
+                # Yield the raw event to the user
+                event_data = {
+                    "type": "stream_event",
+                    "event": event
+                }
+                yield event_data
+                
+                # Process different event types
+                if hasattr(event, 'type'):
+                    if event.type == "message_start":
+                        yield {
+                            "type": "message_start",
+                            "message": event.message
+                        }
+                    
+                    elif event.type == "content_block_start":
+                        content_block = event.content_block
+                        if hasattr(content_block, 'type'):
+                            if content_block.type == "text":
+                                yield {
+                                    "type": "text_start",
+                                    "index": event.index
+                                }
+                            elif content_block.type == "tool_use":
+                                yield {
+                                    "type": "tool_start",
+                                    "index": event.index,
+                                    "tool_name": content_block.name,
+                                    "tool_id": content_block.id
+                                }
+                    
+                    elif event.type == "content_block_delta":
+                        if hasattr(event, 'delta'):
+                            if hasattr(event.delta, 'type'):
+                                if event.delta.type == "text_delta":
+                                    yield {
+                                        "type": "text_delta",
+                                        "index": event.index,
+                                        "text": event.delta.text
+                                    }
+                                
+                                elif event.delta.type == "input_json_delta":
+                                    yield {
+                                        "type": "tool_input_delta",
+                                        "index": event.index,
+                                        "partial_json": event.delta.partial_json
+                                    }
+                    
+                    elif event.type == "content_block_stop":
+                        yield {
+                            "type": "content_block_stop",
+                            "index": event.index
+                        }
+                    
+                    elif event.type == "message_delta":
+                        yield {
+                            "type": "message_delta",
+                            "delta": event.delta,
+                            "usage": getattr(event, 'usage', None)
+                        }
+                    
+                    elif event.type == "message_stop":
+                        yield {
+                            "type": "message_stop"
+                        }
+            
+            # Get the final complete response to check for tool calls
+            final_response = stream.get_final_message()
+            
+            # Add assistant message to history
+            await self.message_history.add_message(
+                "assistant",
+                final_response.content,
+                usage=final_response.usage
+            )
+            
+            # Check if we need to execute tools
+            tool_calls = [
+                content for content in final_response.content
+                if hasattr(content, 'type') and content.type == 'tool_use'
+            ]
+            
+            if not tool_calls:
+                # No tools to execute, we're done
+                if self.verbose:
+                    print(f"\n✅ {self.name} streaming completed")
+                
+                yield {
+                    "type": "final_response",
+                    "response": final_response
+                }
+                return
+            
+            # Execute tool calls
+            if self.verbose:
+                print(f"\n🔧 {self.name} is using tools...")
+                for tool_call in tool_calls:
+                    print(f"   - {tool_call.name}: {tool_call.input}")
+            
+            yield {
+                "type": "tools_start",
+                "tool_calls": tool_calls
+            }
+            
+            tool_results = await self.execute_tool_calls(tool_calls)
+            
+            yield {
+                "type": "tools_complete",
+                "tool_results": tool_results
+            }
+            
+            # Add tool results to message history
+            for result in tool_results:
+                await self.message_history.add_message("user", [result])
+            
+            # Continue with another iteration by recursively calling this method
+            # Note: WebSearchAgent has simpler iteration logic than the base Agent
+            async for event in self._streaming_agent_loop(user_input):
+                yield event
+                
+        except Exception as e:
+            yield {
+                "type": "error",
+                "error": str(e)
+            }
     
     async def _agent_loop(self, user_input: str) -> Any:
         """Main agent loop for processing user input and tool calls."""

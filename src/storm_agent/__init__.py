@@ -17,7 +17,7 @@ from .tools.approval import RequestApprovalTool
 from .tools.handoff import HandoffTool
 from .utils.message_history import MessageHistory, Message
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = "Storm Agent Team"
 __email__ = "contact@storm-agent.dev"
 __description__ = "A powerful framework for building AI agents with Claude"
