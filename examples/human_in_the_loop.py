@@ -7,8 +7,8 @@ import os
 # Add parent directory to Python path to import src module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.agents import Agent
-from src.tools import GoogleDriveTool, GoogleDriveContentTool, RequestApprovalTool, BraveSearchTool
+from storm_agentagents import Agent
+from storm_agenttools import GoogleDriveTool, GoogleDriveContentTool, RequestApprovalTool, BraveSearchTool
 
 
 async def basic_approval_example():
@@ -16,7 +16,7 @@ async def basic_approval_example():
     print("📝 Example 1: Basic Approval Decorator")
     print("=" * 50)
     
-    from src.utils.approval import require_approval
+    from storm_agentutils.approval import require_approval
     
     @require_approval("Perform a simulated expensive operation")
     async def expensive_operation():

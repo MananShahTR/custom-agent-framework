@@ -7,7 +7,7 @@ import os
 # Add parent directory to Python path to import src module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.agents import Agent, ModelConfig
+from storm_agentagents import Agent, ModelConfig
 
 
 async def simple_text_assistant():
@@ -58,7 +58,7 @@ async def custom_tools_assistant():
     
     # For this example, we'll use Google Drive tool if available
     try:
-        from src.tools.google_drive import GoogleDriveTool
+        from storm_agenttools.google_drive import GoogleDriveTool
         google_drive_tool = GoogleDriveTool()
         custom_tools = [google_drive_tool]
         

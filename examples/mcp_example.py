@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Interactive conversational MCP server integration example.
+Interactive conversational MCP server integration example for Storm Agent.
 
 This example demonstrates:
 1. Real-time interactive conversations with MCP tools
@@ -9,7 +9,7 @@ This example demonstrates:
 4. Real-world scenarios with user input
 
 To run this example, you'll need:
-1. pip install mcp
+1. pip install storm-agent
 2. MCP servers configured (filesystem, custom SSE, etc.)
 """
 
@@ -17,10 +17,7 @@ import asyncio
 import sys
 import os
 
-# Add the parent directory to Python path so we can import src
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from src.agents import Agent
+from storm_agent import Agent
 
 
 async def interactive_conversation():
@@ -201,7 +198,7 @@ def show_conversation_examples():
 
 
 if __name__ == "__main__":
-    print("🗣️  Interactive MCP Conversation Demo")
+    print("🌩️ Storm Agent - Interactive MCP Conversation Demo")
     print("=" * 50)
     
     show_conversation_examples()
@@ -237,4 +234,4 @@ if __name__ == "__main__":
         print("\n👋 Demo cancelled by user")
     except Exception as e:
         print(f"\n❌ Error: {e}")
-        print("Check your MCP server configurations and try again.") 
+        print("Check your MCP server configurations and try again.")

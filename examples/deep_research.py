@@ -1,13 +1,9 @@
-"""Example of using the DeepResearchAgent for comprehensive research."""
+"""Example of using the Storm Agent DeepResearchAgent for comprehensive research."""
 
 import asyncio
 import sys
-import os
 
-# Add parent directory to Python path to import src module
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from src.agents import DeepResearchAgent, DeepResearchConfig
+from storm_agent import DeepResearchAgent, DeepResearchConfig
 
 
 async def main():
@@ -198,7 +194,7 @@ async def demo_mode():
 
 
 if __name__ == "__main__":
-    print("🚀 AI Agents Framework - Deep Research Example")
+    print("🌩️ Storm Agent - Deep Research Example")
     print("=" * 80)
     
     # Check for demo mode argument
@@ -209,4 +205,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     
     # # Run quick research example
-    # asyncio.run(quick_research_example()) 
+    # asyncio.run(quick_research_example())
