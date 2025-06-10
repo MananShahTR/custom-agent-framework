@@ -17,8 +17,8 @@ os.chdir(project_root)
 sys.path.insert(0, project_root)
 
 # Now we can import using module syntax that works
-from src.agents.agent import Agent
-from src.tools.handoff import HandoffTool
+from storm_agentagents.agent import Agent
+from storm_agenttools.handoff import HandoffTool
 
 
 def main():

@@ -9,17 +9,17 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="ai-agents-framework",
-    version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
-    description="A clean, modular framework for building AI agents with Claude",
+    name="storm-agent",
+    version="1.0.0",
+    author="Storm Agent Team",
+    author_email="contact@storm-agent.dev",
+    description="A powerful framework for building AI agents with Claude",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/ai-agents-framework",
+    url="https://github.com/storm-agent/storm-agent",
     packages=find_packages(),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
@@ -42,7 +42,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "ai-agents=src.cli:main",
+            "storm-agent=storm_agent.cli:main",
         ],
     },
-) 
+)

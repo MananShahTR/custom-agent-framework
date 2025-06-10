@@ -1,7 +1,7 @@
-"""Basic example of using the WebSearchAgent."""
+"""Basic example of using the Storm Agent WebSearchAgent."""
 
 import asyncio
-from src.agents import WebSearchAgent
+from storm_agent import WebSearchAgent
 
 
 async def main():
@@ -59,7 +59,7 @@ def main_sync():
 
 
 if __name__ == "__main__":
-    print("🚀 AI Agents Framework - Web Search Example")
+    print("🌩️ Storm Agent - Web Search Example")
     print("=" * 50)
     
     # You can run either async or sync version
@@ -68,4 +68,4 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 70)
     print("Running sync version...")
-    main_sync() 
+    main_sync()

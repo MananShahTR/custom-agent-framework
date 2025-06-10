@@ -7,7 +7,7 @@ import os
 # Add parent directory to Python path to import src module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.agents import DeepResearchAgent, DeepResearchConfig
+from storm_agentagents import DeepResearchAgent, DeepResearchConfig
 
 
 async def web_only_research_example():
