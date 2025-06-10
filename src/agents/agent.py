@@ -227,8 +227,6 @@ Only proceed with sensitive or costly operations if you receive "APPROVED" in th
         # Run the agent loop
         response = await self._agent_loop(user_input)
         
-        print(self.message_history)
-        
         return response
     
     async def _agent_loop(self, user_input: str) -> Any:
