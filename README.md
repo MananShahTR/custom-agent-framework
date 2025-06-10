@@ -92,7 +92,6 @@ response = await agent.run_async("List the files in my project directory")
 ├── examples/              # Example scripts and demos
 ├── tests/                 # Test files
 ├── scripts/               # Setup and utility scripts
-├── archive/               # Archived/legacy code
 ├── requirements.txt       # Python dependencies
 └── README.md             # This file
 ```
