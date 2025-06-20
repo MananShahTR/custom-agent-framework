@@ -5,48 +5,6 @@ All notable changes to Storm Agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-01-10
-
-### Added
-- **Real-time Streaming Support**: Complete streaming implementation for all agent types
-  - `stream` parameter in `run_async()` and `run()` methods for unified interface
-  - Real-time streaming responses with incremental text delivery
-  - 14 different streaming event types for comprehensive monitoring
-  - Backward compatible `stream_async()` method preserved
-
-- **Comprehensive Event System**:
-  - `text_delta`: Incremental text content for real-time UI updates
-  - `tool_start`/`tools_start`: Tool execution tracking with progress indicators
-  - `message_start`/`message_stop`: Full message lifecycle events
-  - `stream_event`: Raw Anthropic events for advanced debugging
-  - `error` and `max_iterations_reached`: Robust error handling
-
-- **Developer Tools and Examples**:
-  - `examples/streaming_example.py`: Interactive streaming demonstrations
-  - `examples/streaming_events_showcase.py`: All 14 event types demonstrated
-  - `STREAMING_GUIDE.md`: Comprehensive streaming documentation
-  - Event filtering and metrics tracking examples
-  - Production-ready streaming patterns
-
-- **Production Features**:
-  - Non-blocking streaming with tool execution support
-  - Multi-iteration streaming flows with progress tracking
-  - Memory-efficient event processing
-  - Comprehensive error handling during streaming
-  - Token usage monitoring through streaming events
-
-### Enhanced
-- All agent types now support streaming: `Agent`, `WebSearchAgent`, `DeepResearchAgent`
-- Tool execution seamlessly integrated with streaming responses
-- Message history management during streaming operations
-- Performance optimizations for real-time response delivery
-
-### Technical Details
-- **Streaming Architecture**: Event-driven, non-blocking design
-- **Event Types**: 14 distinct event types covering all streaming scenarios
-- **Performance**: Real-time text delivery with tool execution support
-- **Compatibility**: 100% backward compatible with existing code
-
 ## [1.0.0] - 2025-01-10
 
 ### Added
