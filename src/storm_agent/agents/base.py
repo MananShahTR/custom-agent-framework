@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, List, Dict, Optional, Union, AsyncGenerator, Iterator
+from typing import Any, List, Dict, Optional, Union
 from contextlib import AsyncExitStack
 from anthropic import Anthropic
 import os
@@ -155,78 +155,34 @@ Always think step by step and use tools when they would be helpful to complete t
         return [tool.to_dict() for tool in self.tools]
     
     @abstractmethod
-    async def run_async(self, user_input: str, stream: bool = False, **kwargs) -> Any:
+    async def run_async(self, user_input: str, **kwargs) -> Any:
         """Run the agent asynchronously with user input.
         
         Args:
             user_input: The user's input/query
-            stream: Whether to stream the response (if True, returns async generator)
             **kwargs: Additional arguments
             
         Returns:
-            The agent's response (Message object if stream=False, AsyncGenerator if stream=True)
+            The agent's response
         """
         # Ensure MCP tools are set up before running
         await self._ensure_mcp_setup()
         # Implementation should be provided by subclasses
         pass
     
-    @abstractmethod
-    async def stream_async(self, user_input: str, **kwargs) -> AsyncGenerator[Dict[str, Any], None]:
-        """Stream the agent's response asynchronously with user input.
-        
-        Args:
-            user_input: The user's input/query
-            **kwargs: Additional arguments
-            
-        Yields:
-            Dict containing streaming events with 'type' and relevant data
-        """
-        # Ensure MCP tools are set up before running
-        await self._ensure_mcp_setup()
-        # Implementation should be provided by subclasses
-        pass
-    
-    def run(self, user_input: str, stream: bool = False, **kwargs) -> Any:
+    def run(self, user_input: str, **kwargs) -> Any:
         """Run the agent synchronously with user input.
         
         Args:
             user_input: The user's input/query
-            stream: Whether to stream the response (if True, returns Iterator)
             **kwargs: Additional arguments
             
         Returns:
-            The agent's response (Message object if stream=False, Iterator if stream=True)
+            The agent's response
         """
         import asyncio
-        return asyncio.run(self.run_async(user_input, stream=stream, **kwargs))
+        return asyncio.run(self.run_async(user_input, **kwargs))
     
-    def stream(self, user_input: str, **kwargs) -> Iterator[Dict[str, Any]]:
-        """Stream the agent's response synchronously with user input.
-        
-        Args:
-            user_input: The user's input/query
-            **kwargs: Additional arguments
-            
-        Yields:
-            Dict containing streaming events with 'type' and relevant data
-        """
-        import asyncio
-        
-        async def _async_generator():
-            async for event in self.stream_async(user_input, **kwargs):
-                yield event
-        
-        async def _run_async_generator():
-            events = []
-            async for event in _async_generator():
-                events.append(event)
-            return events
-        
-        events = asyncio.run(_run_async_generator())
-        for event in events:
-            yield event
-
     async def execute_tool_calls(
         self, 
         tool_calls: List[Any], 
@@ -293,11 +249,10 @@ Always think step by step and use tools when they would be helpful to complete t
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    # If loop is running, schedule cleanup for later
+                    # Schedule cleanup for later if loop is running
                     loop.create_task(self.cleanup())
                 else:
-                    # If loop is not running, run cleanup directly
-                    loop.run_until_complete(self.cleanup())
+                    # Run cleanup if no loop is running
+                    asyncio.run(self.cleanup())
             except Exception:
-                # Silent cleanup failure
-                pass 
+                pass  # Ignore cleanup errors during destruction 

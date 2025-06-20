@@ -1,6 +1,6 @@
 """Default Agent implementation with configurable tools and behavior."""
 
-from typing import List, Optional, Any, Dict, AsyncGenerator
+from typing import List, Optional, Any, Dict
 from anthropic import Anthropic
 
 from .base import BaseAgent, ModelConfig
@@ -209,17 +209,8 @@ Only proceed with sensitive or costly operations if you receive "APPROVED" in th
         
         return params
     
-    async def run_async(self, user_input: str, stream: bool = False, **kwargs) -> Any:
-        """Run the agent asynchronously with user input.
-        
-        Args:
-            user_input: The user's input/query
-            stream: Whether to stream the response (if True, returns async generator)
-            **kwargs: Additional arguments
-            
-        Returns:
-            The agent's response (Message object if stream=False, AsyncGenerator if stream=True)
-        """
+    async def run_async(self, user_input: str, **kwargs) -> Any:
+        """Run the agent asynchronously with user input."""
         # Ensure MCP tools are set up before running
         await self._ensure_mcp_setup()
         
@@ -233,55 +224,10 @@ Only proceed with sensitive or costly operations if you receive "APPROVED" in th
             # For stateless operation, maintain current conversation
             self._current_messages = [{"role": "user", "content": user_input}]
         
-        # Route to streaming or non-streaming implementation
-        if stream:
-            return self._streaming_agent_loop(user_input)
-        else:
-            return await self._agent_loop(user_input)
-    
-    async def stream_async(self, user_input: str, **kwargs) -> AsyncGenerator[Dict[str, Any], None]:
-        """Stream the agent's response asynchronously with user input.
+        # Run the agent loop
+        response = await self._agent_loop(user_input)
         
-        This method is provided for backward compatibility. For new code, 
-        prefer using run_async(user_input, stream=True).
-        
-        Args:
-            user_input: The user's input/query
-            **kwargs: Additional arguments
-            
-        Yields:
-            Dict containing streaming events with 'type' and relevant data
-        """
-        async for event in await self.run_async(user_input, stream=True, **kwargs):
-            yield event
-    
-    def run(self, user_input: str, stream: bool = False, **kwargs) -> Any:
-        """Run the agent synchronously with user input.
-        
-        Args:
-            user_input: The user's input/query
-            stream: Whether to stream the response (if True, returns Iterator)
-            **kwargs: Additional arguments
-            
-        Returns:
-            The agent's response (Message object if stream=False, Iterator if stream=True)
-        """
-        import asyncio
-        
-        if stream:
-            # For streaming, we need to collect all events synchronously
-            async def _run_async_stream():
-                events = []
-                async for event in await self.run_async(user_input, stream=True, **kwargs):
-                    events.append(event)
-                return events
-            
-            events = asyncio.run(_run_async_stream())
-            # Return an iterator over the collected events
-            return iter(events)
-        else:
-            # For non-streaming, run normally
-            return asyncio.run(self.run_async(user_input, stream=False, **kwargs))
+        return response
     
     async def _agent_loop(self, user_input: str) -> Any:
         """Main agent loop for processing user input and tool calls."""
@@ -349,183 +295,6 @@ Only proceed with sensitive or costly operations if you receive "APPROVED" in th
             print(f"\n⚠️ Max iterations ({self.max_iterations}) reached")
         
         return response
-    
-    async def _streaming_agent_loop(self, user_input: str) -> AsyncGenerator[Dict[str, Any], None]:
-        """Main streaming agent loop for processing user input and tool calls."""
-        iteration = 0
-        
-        while iteration < self.max_iterations:
-            # Prepare message parameters
-            params = self._prepare_message_params()
-            params["stream"] = True  # Enable streaming
-            
-            # Get streaming response from Claude
-            stream = self.client.messages.create(**params)
-            
-            # Process streaming events
-            current_content = []
-            current_tool_calls = []
-            assistant_content_buffer = []
-            
-            try:
-                for event in stream:
-                    # Yield the raw event to the user
-                    event_data = {
-                        "type": "stream_event",
-                        "event": event
-                    }
-                    yield event_data
-                    
-                    # Process different event types
-                    if hasattr(event, 'type'):
-                        if event.type == "message_start":
-                            yield {
-                                "type": "message_start",
-                                "message": event.message
-                            }
-                        
-                        elif event.type == "content_block_start":
-                            content_block = event.content_block
-                            if hasattr(content_block, 'type'):
-                                if content_block.type == "text":
-                                    yield {
-                                        "type": "text_start",
-                                        "index": event.index
-                                    }
-                                elif content_block.type == "tool_use":
-                                    yield {
-                                        "type": "tool_start",
-                                        "index": event.index,
-                                        "tool_name": content_block.name,
-                                        "tool_id": content_block.id
-                                    }
-                        
-                        elif event.type == "content_block_delta":
-                            if hasattr(event, 'delta'):
-                                if hasattr(event.delta, 'type'):
-                                    if event.delta.type == "text_delta":
-                                        yield {
-                                            "type": "text_delta",
-                                            "index": event.index,
-                                            "text": event.delta.text
-                                        }
-                                        # Buffer text content for final response
-                                        if len(assistant_content_buffer) <= event.index:
-                                            assistant_content_buffer.extend([None] * (event.index + 1 - len(assistant_content_buffer)))
-                                        if assistant_content_buffer[event.index] is None:
-                                            assistant_content_buffer[event.index] = {"type": "text", "text": ""}
-                                        assistant_content_buffer[event.index]["text"] += event.delta.text
-                                    
-                                    elif event.delta.type == "input_json_delta":
-                                        yield {
-                                            "type": "tool_input_delta",
-                                            "index": event.index,
-                                            "partial_json": event.delta.partial_json
-                                        }
-                        
-                        elif event.type == "content_block_stop":
-                            yield {
-                                "type": "content_block_stop",
-                                "index": event.index
-                            }
-                        
-                        elif event.type == "message_delta":
-                            yield {
-                                "type": "message_delta",
-                                "delta": event.delta,
-                                "usage": getattr(event, 'usage', None)
-                            }
-                        
-                        elif event.type == "message_stop":
-                            yield {
-                                "type": "message_stop"
-                            }
-                
-                # Get the final complete response to check for tool calls
-                final_response = stream.get_final_message()
-                
-                # Add assistant message to history
-                if self.message_history:
-                    await self.message_history.add_message(
-                        "assistant",
-                        final_response.content,
-                        usage=final_response.usage
-                    )
-                
-                # Check if we need to execute tools
-                tool_calls = [
-                    content for content in final_response.content
-                    if hasattr(content, 'type') and content.type == 'tool_use'
-                ]
-                
-                if not tool_calls:
-                    # No tools to execute, we're done
-                    if self.verbose:
-                        print(f"\n✅ {self.name} streaming completed")
-                    
-                    yield {
-                        "type": "final_response",
-                        "response": final_response
-                    }
-                    return
-                
-                # Execute tool calls
-                if self.verbose:
-                    print(f"\n🔧 {self.name} is using tools (iteration {iteration + 1})...")
-                    for tool_call in tool_calls:
-                        print(f"  - {tool_call.name}: {tool_call.input}")
-                
-                yield {
-                    "type": "tools_start",
-                    "tool_calls": tool_calls,
-                    "iteration": iteration + 1
-                }
-                
-                tool_results = await self.execute_tool_calls(tool_calls, parallel=self.parallel_tools)
-                
-                yield {
-                    "type": "tools_complete",
-                    "tool_results": tool_results,
-                    "iteration": iteration + 1
-                }
-                
-                # Add tool results to message history
-                if self.message_history:
-                    for result in tool_results:
-                        await self.message_history.add_message("user", [result])
-                else:
-                    # For stateless operation, add to current messages
-                    if not hasattr(self, '_current_messages'):
-                        self._current_messages = []
-                    self._current_messages.append({
-                        "role": "assistant",
-                        "content": final_response.content
-                    })
-                    for result in tool_results:
-                        self._current_messages.append({
-                            "role": "user",
-                            "content": [result]
-                        })
-                
-                iteration += 1
-                
-            except Exception as e:
-                yield {
-                    "type": "error",
-                    "error": str(e),
-                    "iteration": iteration
-                }
-                break
-        
-        # Handle max iterations reached
-        if iteration >= self.max_iterations:
-            if self.verbose:
-                print(f"\n⚠️ Max iterations ({self.max_iterations}) reached")
-            
-            yield {
-                "type": "max_iterations_reached",
-                "max_iterations": self.max_iterations
-            }
     
     def _format_response(self, content: List[Any]) -> str:
         """Format the response content for display."""
